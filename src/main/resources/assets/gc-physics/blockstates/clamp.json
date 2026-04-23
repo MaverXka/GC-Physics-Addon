@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "gc-physics:block/clamp" }
+  }
+}

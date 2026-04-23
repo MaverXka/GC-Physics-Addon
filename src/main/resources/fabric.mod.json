@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "gc-physics",
+  "version": "${version}",
+  "name": "GC Physics",
+  "description": "Physics-based ships and vehicles for Galacticraft using Sable.",
+  "authors": [
+    "maxryan008"
+  ],
+  "contact": {},
+  "license": "All Rights Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.galacticraft.gcphysics.GcPhysicsMod"
+    ],
+    "client": [
+      "dev.galacticraft.gcphysics.GcPhysicsClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*",
+    "sable": "*",
+    "galacticraft": "*"
+  }
+}

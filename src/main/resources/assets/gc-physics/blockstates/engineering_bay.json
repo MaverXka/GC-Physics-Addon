@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "gc-physics:block/engineering_bay" }
+  }
+}

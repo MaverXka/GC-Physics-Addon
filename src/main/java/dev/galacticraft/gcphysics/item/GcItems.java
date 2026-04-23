@@ -22,12 +22,14 @@ public final class GcItems {
         registerBlockItem("launch_tower", GcBlocks.LAUNCH_TOWER);
         registerBlockItem("engineering_bay", GcBlocks.ENGINEERING_BAY);
         registerBlockItem("clamp", GcBlocks.CLAMP);
+        registerBlockItem("rocket_engine", GcBlocks.ROCKET_ENGINE);
 
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.FUNCTIONAL_BLOCKS).register(entries -> {
             entries.accept(GcBlocks.LAUNCH_PAD);
             entries.accept(GcBlocks.LAUNCH_TOWER);
             entries.accept(GcBlocks.ENGINEERING_BAY);
             entries.accept(GcBlocks.CLAMP);
+            entries.accept(GcBlocks.ROCKET_ENGINE);
         });
     }
 

@@ -2,6 +2,7 @@ package dev.galacticraft.gcphysics.block;
 
 import dev.galacticraft.gcphysics.GcPhysicsMod;
 
+import dev.galacticraft.gcphysics.block.rocket.RocketEngineBlock;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -28,6 +29,13 @@ public final class GcBlocks {
     public static final Block CLAMP = register(
             "clamp",
             new ClampBlock(BlockBehaviour.Properties.of().mapColor(MapColor.METAL).strength(-1.0f, 3600000.0f).noOcclusion())
+    );
+
+    public static final Block ROCKET_ENGINE = register(
+            "rocket_engine",
+            new RocketEngineBlock(BlockBehaviour.Properties.of()
+                    .strength(4.0f)
+                    .noOcclusion())
     );
 
     private GcBlocks() {

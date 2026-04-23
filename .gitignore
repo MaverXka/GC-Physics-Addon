@@ -30,7 +30,6 @@ bin/
 .DS_Store
 
 /runalt/
-/gradle/
 /build/
 /.gradle/
 /run/

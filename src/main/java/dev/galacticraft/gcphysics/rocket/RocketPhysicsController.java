@@ -1,5 +1,6 @@
 package dev.galacticraft.gcphysics.rocket;
 
+import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.sublevel.ServerSubLevelContainer;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
@@ -30,16 +31,27 @@ public final class RocketPhysicsController {
                 continue;
             }
 
-            Vec3 thrustPerSecond = scan.totalLocalThrustPerSecond();
-            Vec3 impulseThisTick = thrustPerSecond.scale(timeStep);
+            RigidBodyHandle handle = physicsSystem.getPhysicsHandle(subLevel);
+            if (handle == null) {
+                continue;
+            }
 
-            physicsSystem.getPhysicsHandle(subLevel).applyLinearImpulse(
-                    new Vector3d(
-                            impulseThisTick.x,
-                            impulseThisTick.y,
-                            impulseThisTick.z
-                    )
-            );
+            for (RocketSubLevelScanner.EngineForceSample sample : scan.samples()) {
+                Vec3 impulseThisTick = sample.localThrustPerSecond().scale(timeStep);
+
+                handle.applyImpulseAtPoint(
+                        new Vector3d(
+                                sample.localPosition().x,
+                                sample.localPosition().y,
+                                sample.localPosition().z
+                        ),
+                        new Vector3d(
+                                impulseThisTick.x,
+                                impulseThisTick.y,
+                                impulseThisTick.z
+                        )
+                );
+            }
         }
     }
 }

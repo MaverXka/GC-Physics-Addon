@@ -30,11 +30,15 @@ import org.jetbrains.annotations.Nullable;
 public class RocketEngineBlock extends Block {
     public static final MapCodec<RocketEngineBlock> CODEC = simpleCodec(RocketEngineBlock::new);
 
-    public static final double THRUST_PER_SECOND = 200.0; // this is super strong
-
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
+    /**
+     * FACING is the direction from MAIN -> EXTENSION.
+     * Treat this as the engine's exhaust/nozzle direction.
+     */
+    public static final DirectionProperty FACING = BlockStateProperties.FACING;
     public static final EnumProperty<EnginePart> PART = EnumProperty.create("part", EnginePart.class);
     public static final BooleanProperty POWERED = BlockStateProperties.POWERED;
+
+    public static final double THRUST_PER_SECOND = 50.0;
 
     public RocketEngineBlock(BlockBehaviour.Properties properties) {
         super(properties);
@@ -54,19 +58,10 @@ public class RocketEngineBlock extends Block {
         Level level = context.getLevel();
         BlockPos pos = context.getClickedPos();
 
-        Direction facing = context.getHorizontalDirection().getOpposite();
+        // Engine extends toward the player / nearest look direction opposite
+        Direction facing = context.getNearestLookingDirection().getOpposite();
         BlockPos extensionPos = pos.relative(facing);
         BlockState extensionState = level.getBlockState(extensionPos);
-
-        if (!level.getWorldBorder().isWithinBounds(extensionPos)) {
-            if (level.isClientSide() && context.getPlayer() != null) {
-                context.getPlayer().displayClientMessage(
-                        Component.literal("Cannot place rocket engine: extension would be outside the world border."),
-                        true
-                );
-            }
-            return null;
-        }
 
         if (!extensionState.canBeReplaced(context)) {
             if (level.isClientSide() && context.getPlayer() != null) {
@@ -120,25 +115,6 @@ public class RocketEngineBlock extends Block {
         updatePowered(level, pos, state);
     }
 
-
-    public static boolean isMainEngine(BlockState state) {
-        return state.getBlock() instanceof RocketEngineBlock
-                && state.getValue(PART) == EnginePart.MAIN;
-    }
-
-    public static boolean isEngineActive(BlockState state) {
-        return isMainEngine(state) && state.getValue(POWERED);
-    }
-
-    //TODO this currently only makes the sublevel move directly upwards relative to the sublevel. so the thrust is always pushing the sublevel in its y direction.
-    public static Vec3 getLocalThrustPerSecond(BlockState state) {
-        if (!isEngineActive(state)) {
-            return Vec3.ZERO;
-        }
-
-        return new Vec3(0.0, THRUST_PER_SECOND, 0.0);
-    }
-
     @Override
     protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos, boolean movedByPiston) {
         super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
@@ -176,12 +152,36 @@ public class RocketEngineBlock extends Block {
 
     @Override
     protected @NotNull BlockState rotate(BlockState state, Rotation rotation) {
-        return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
+        // Rotation only meaningfully affects horizontal facings.
+        Direction facing = state.getValue(FACING);
+        if (facing.getAxis().isHorizontal()) {
+            return state.setValue(FACING, rotation.rotate(facing));
+        }
+        return state;
     }
 
     @Override
     protected @NotNull BlockState mirror(BlockState state, Mirror mirror) {
-        return state.rotate(mirror.getRotation(state.getValue(FACING)));
+        Direction facing = state.getValue(FACING);
+        if (facing.getAxis().isHorizontal()) {
+            return state.rotate(mirror.getRotation(facing));
+        }
+        return state;
+    }
+
+    @Override
+    protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
+        BlockPos otherPos = getOtherPartPos(state, pos);
+        BlockState otherState = level.getBlockState(otherPos);
+
+        if (state.getValue(PART) == EnginePart.MAIN) {
+            if (isMatchingCounterpart(state, otherState)) {
+                return true;
+            }
+            return otherState.canBeReplaced();
+        }
+
+        return isMatchingCounterpart(state, otherState);
     }
 
     @Override
@@ -194,22 +194,6 @@ public class RocketEngineBlock extends Block {
         }
 
         return getExtensionShape(facing);
-    }
-
-    @Override
-    protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
-        BlockPos otherPos = getOtherPartPos(state, pos);
-        BlockState otherState = level.getBlockState(otherPos);
-
-        if (state.getValue(PART) == EnginePart.MAIN) {
-            if (isMatchingCounterpart(state, otherState)) {
-                return true;
-            }
-
-            return otherState.canBeReplaced();
-        }
-
-        return isMatchingCounterpart(state, otherState);
     }
 
     private static void updatePowered(Level level, BlockPos pos, BlockState state) {
@@ -254,6 +238,34 @@ public class RocketEngineBlock extends Block {
         return pos.relative(state.getValue(FACING).getOpposite());
     }
 
+    public static boolean isMainEngine(BlockState state) {
+        return state.getBlock() instanceof RocketEngineBlock
+                && state.getValue(PART) == EnginePart.MAIN;
+    }
+
+    public static boolean isEngineActive(BlockState state) {
+        return isMainEngine(state) && state.getValue(POWERED);
+    }
+
+    /**
+     * Exhaust direction = FACING.
+     * Thrust direction = opposite of exhaust.
+     */
+    public static Vec3 getLocalThrustPerSecond(BlockState state) {
+        if (!isEngineActive(state)) {
+            return Vec3.ZERO;
+        }
+
+        Direction exhaust = state.getValue(FACING);
+        Direction thrust = exhaust.getOpposite();
+
+        return new Vec3(
+                thrust.getStepX() * THRUST_PER_SECOND,
+                thrust.getStepY() * THRUST_PER_SECOND,
+                thrust.getStepZ() * THRUST_PER_SECOND
+        );
+    }
+
     private static VoxelShape getMainShape(Direction facing) {
         return switch (facing) {
             case NORTH -> Shapes.or(
@@ -272,7 +284,14 @@ public class RocketEngineBlock extends Block {
                     box(0, 3, 3, 10, 13, 13),
                     box(10, 5, 5, 16, 11, 11)
             );
-            default -> Shapes.block();
+            case UP -> Shapes.or(
+                    box(3, 0, 3, 13, 10, 13),
+                    box(5, 10, 5, 11, 16, 11)
+            );
+            case DOWN -> Shapes.or(
+                    box(3, 6, 3, 13, 16, 13),
+                    box(5, 0, 5, 11, 6, 11)
+            );
         };
     }
 
@@ -294,7 +313,14 @@ public class RocketEngineBlock extends Block {
                     box(4, 2, 2, 16, 14, 14),
                     box(0, 4, 4, 4, 12, 12)
             );
-            default -> Shapes.block();
+            case UP -> Shapes.or(
+                    box(2, 4, 2, 14, 16, 14),
+                    box(4, 0, 4, 12, 4, 12)
+            );
+            case DOWN -> Shapes.or(
+                    box(2, 0, 2, 14, 12, 14),
+                    box(4, 12, 4, 12, 16, 12)
+            );
         };
     }
 

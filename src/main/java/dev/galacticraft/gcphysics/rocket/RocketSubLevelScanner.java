@@ -33,7 +33,8 @@ public final class RocketSubLevelScanner {
                     continue;
                 }
 
-                int baseY = chunk.getSectionYFromSectionIndex(sectionIndex);
+                int sectionY = chunk.getSectionYFromSectionIndex(sectionIndex);
+                int baseY = sectionY << 4;
 
                 for (int localX = 0; localX < 16; localX++) {
                     for (int localY = 0; localY < 16; localY++) {

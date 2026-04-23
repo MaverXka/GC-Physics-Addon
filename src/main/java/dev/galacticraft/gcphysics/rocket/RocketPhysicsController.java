@@ -32,18 +32,19 @@ public final class RocketPhysicsController {
             }
 
             RigidBodyHandle handle = physicsSystem.getPhysicsHandle(subLevel);
-            if (handle == null) {
+            if (handle == null || !handle.isValid()) {
                 continue;
             }
 
             for (RocketSubLevelScanner.EngineForceSample sample : scan.samples()) {
                 Vec3 impulseThisTick = sample.localThrustPerSecond().scale(timeStep);
+                Vec3 enginePlotPosition = sample.localPosition();
 
                 handle.applyImpulseAtPoint(
                         new Vector3d(
-                                sample.localPosition().x,
-                                sample.localPosition().y,
-                                sample.localPosition().z
+                                enginePlotPosition.x,
+                                enginePlotPosition.y,
+                                enginePlotPosition.z
                         ),
                         new Vector3d(
                                 impulseThisTick.x,
